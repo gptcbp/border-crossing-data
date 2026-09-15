@@ -1,0 +1,51 @@
+name: Collect border crossing data
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 * * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Create directories
+        run: |
+          mkdir -p data/raw/cbp
+          mkdir -p data/raw/bts
+          mkdir -p data/processed
+          mkdir -p data/statistics
+          mkdir -p scripts
+          mkdir -p reports
+          mkdir -p sources
+
+      - name: Collect CBP border wait times
+        run: |
+          python scripts/collect_cbp.py
+
+      - name: Commit collected data
+        run: |
+          git config user.name "Border Crossing Data Bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git add reports/ || true
+          git add sources/ || true
+
+          if git diff --cached --quiet; then
+            echo "No new data to commit."
+          else
+            git commit -m "Update border crossing data"
+            git push
+          fi
